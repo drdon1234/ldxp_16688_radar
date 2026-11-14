@@ -1,0 +1,9 @@
+本程序包含动态加载的 Qt、PySide6、Shiboken6 组件（6.12.0），采用 LGPL v3 许可选项，未修改其源码。
+Qt / PySide6 Copyright (C) The Qt Company Ltd. and contributors.
+官方源码：https://code.qt.io/cgit/qt/qtbase.git/ 与 https://code.qt.io/cgit/pyside/pyside-setup.git/ （对应版本标签 v6.12.0）。
+许可文本见 licenses/LGPL-3.0.txt 和 licenses/GPL-3.0.txt。
+允许为调试这些库的修改而进行逆向工程。完整应用源码和构建脚本随附，允许用户修改、重建应用并替换所使用的库；应用自身代码不对用户的此类使用施加额外限制。
+
+Python 3.13.3: Python Software Foundation License，见 licenses/PYTHON.txt。
+PyInstaller 6.22.3: GPL v2 with bootloader exception，见 licenses/PYINSTALLER.txt；该例外允许分发打包后的应用。
+打包包含其他依赖时，许可证和版权仍属于其各自权利人。

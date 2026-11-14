@@ -1,0 +1,13 @@
+/test/
+__pycache__/
+*.py[cod]
+.venv/
+.build-env/
+.build/
+build/
+dist/
+*.spec
+*.exe
+*.zip
+settings.json
+platform_cooldowns.json
