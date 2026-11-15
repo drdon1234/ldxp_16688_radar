@@ -43,7 +43,7 @@ class Worker(QThread):
 
 
 class ProductsModel(QAbstractTableModel):
-    headers = ['商品名称', '价格 / 元', '库存', '分类', '商家', '平台']
+    headers = ['商品名称', '价格 / 元', '库存状态', '分类', '商家', '平台', '库存数量']
 
     def __init__(self):
         super().__init__()
@@ -64,7 +64,7 @@ class ProductsModel(QAbstractTableModel):
             return None
         p = self.items[index.row()]
         values = [p.name, f'{p.price:.2f}' if p.price is not None else '—',
-                  '有货' if p.stock else '缺货' if p.stock is False else '未识别', p.category, p.shop_name, p.platform]
+                  '有货' if p.stock else '缺货' if p.stock is False else '未识别', p.category, p.shop_name, p.platform, str(p.stock_count) if p.stock_count is not None else '未公开']
         if role in (Qt.DisplayRole, Qt.ToolTipRole):
             return values[index.column()]
         if role == Qt.ForegroundRole and index.column() == 2:
@@ -83,6 +83,7 @@ QWidget {font-family: "Microsoft YaHei UI"; font-size: 13px; color:#25334a;}
 QDialog, QMessageBox {background:#f8faff;}
 QWidget:disabled {color:#586880;}
 QMainWindow {background:#edf1f7;}
+QWidget#searchConditions, QWidget#filterConditions {background:#f8faff; border:1px solid #d6dfec; border-radius:8px;}
 QWidget#sidebar, QWidget#results {background:white; border-radius:12px;}
 QLabel#title {font-size:25px; font-weight:700; color:#152c50;}
 QLabel#section {font-size:15px; font-weight:700; margin-top:8px;}
@@ -159,54 +160,70 @@ class Window(QMainWindow):
         layout.addWidget(split, 1)
         sidebar = QWidget(); sidebar.setObjectName('sidebar')
         left = QVBoxLayout(sidebar); left.setContentsMargins(16, 12, 16, 16)
-        self.section(left, '01  商家链接')
+        self.section(left, '商家链接')
         self.urls = QPlainTextEdit(store.data['urls']); self.urls.setFixedHeight(100)
         self.urls.setPlaceholderText('每行一个商家链接；支持两平台混合输入')
         self.urls.setToolTip('支持 wzyp.cn、ldxp.cn、16688.com.cn 的 /shop/店铺编号 链接。自动去重，最多500家。')
         left.addWidget(self.urls)
-        self.defaults_button = QPushButton(f'载入已核验默认商家（{len(DEFAULT_URLS)}家）')
-        self.defaults_button.clicked.connect(lambda: self.urls.setPlainText('\n'.join(DEFAULT_URLS)))
+        self.defaults_button = QPushButton('恢复 GPT_TEAM_5X 配置')
+        self.defaults_button.clicked.connect(self.restore_builtin)
         left.addWidget(self.defaults_button)
         row = QHBoxLayout()
         self.start_button = self.button(row, '查询全部商家', self.start); self.start_button.setObjectName('primary')
         self.stop_button = self.button(row, '停止', self.stop); self.stop_button.setEnabled(False)
         left.addLayout(row)
         self.retry_button = QPushButton('仅重试未完成商家'); self.retry_button.clicked.connect(lambda: self.start(retry=True)); self.retry_button.setEnabled(False); left.addWidget(self.retry_button)
-        self.section(left, '02  联合筛选')
+        search_box = QWidget(); search_box.setObjectName('searchConditions')
+        search_layout = QVBoxLayout(search_box)
+        self.section(search_layout, '搜索条件')
         form = QFormLayout(); form.setSpacing(9)
         self.fields = {}
         for key, label, hint in [('any','包含任一','例如：5x,10x'),('all','同时包含','例如：team'),('exclude','排除关键词','例如：1x')]:
             edit = QLineEdit(); edit.setPlaceholderText(hint); self.fields[key] = edit; form.addRow(label, edit)
         hint = QLabel('多个词用逗号分隔；忽略大小写，按文本包含匹配。'); hint.setObjectName('muted'); hint.setWordWrap(True)
         form.addRow(hint)
+        search_layout.addLayout(form)
+        clear_search = QPushButton('清空搜索词'); clear_search.clicked.connect(self.clear_search_conditions); search_layout.addWidget(clear_search)
+        left.insertWidget(3, search_box)
+        filter_box = QWidget(); filter_box.setObjectName('filterConditions')
+        filter_layout = QVBoxLayout(filter_box)
+        self.section(filter_layout, '筛选条件')
+        form = QFormLayout(); form.setSpacing(9)
         price = QHBoxLayout()
         for key, hint_text in [('minimum','最低 / 不限'),('maximum','最高 / 不限')]:
             edit = QLineEdit(); edit.setPlaceholderText(hint_text); self.fields[key] = edit; price.addWidget(edit)
         form.addRow('价格范围', price)
         self.inclusive = QCheckBox('包含价格上限（≤）'); form.addRow('', self.inclusive)
         self.stock = QCheckBox('仅看有货'); form.addRow('', self.stock)
+        quantity = QHBoxLayout()
+        for key, placeholder in [('stock_min','最少 / 不限'),('stock_max','最多 / 不限')]:
+            edit = QLineEdit(); edit.setPlaceholderText(placeholder); self.fields[key]=edit; quantity.addWidget(edit)
+        form.addRow('库存数量',quantity)
+        hint = QLabel('数量范围包含上下限；设置后排除未公开数量的商品。'); hint.setWordWrap(True); hint.setObjectName('muted'); form.addRow(hint)
         self.category = QComboBox(); self.category.setEditable(True); self.category.addItem(''); self.category.lineEdit().setPlaceholderText('全部分类 / 输入分类名称')
         self.category.setToolTip('空白表示全部分类。指定分类按名称精确匹配所有商家；未包含该分类的商家不会命中。')
         form.addRow('分类', self.category)
         self.sort = QComboBox(); self.sort.addItem('价格从低到高','asc'); self.sort.addItem('价格从高到低','desc'); self.sort.addItem('商家原始顺序','original')
         form.addRow('排序', self.sort)
-        left.addLayout(form)
-        resetrow = QHBoxLayout(); self.button(resetrow,'清空条件', self.clear_filters); self.button(resetrow,'恢复验收条件',lambda: self.set_filters(DEFAULT_FILTERS)); left.addLayout(resetrow)
-        self.section(left, '03  筛选预设')
+        filter_layout.addLayout(form)
+        clear_filter = QPushButton('清空筛选限制'); clear_filter.clicked.connect(self.clear_filter_conditions); filter_layout.addWidget(clear_filter)
+        resetrow = QHBoxLayout(); self.button(resetrow,'清空条件', self.clear_filters); self.button(resetrow,'恢复自带条件',lambda: self.set_filters(DEFAULT_FILTERS)); left.addLayout(resetrow)
+        self.section(left, '命名预设')
         self.presets = QComboBox(); left.addWidget(self.presets)
         row = QHBoxLayout(); self.button(row,'另存为',self.save_preset); self.button(row,'更新',self.update_preset); self.button(row,'重命名',self.rename_preset); self.button(row,'删除',self.delete_preset); left.addLayout(row)
-        hint = QLabel('选中即应用；保存分类、关键词、价格、库存和排序。预设不绑定商家。'); hint.setObjectName('muted'); hint.setWordWrap(True); left.addWidget(hint)
+        hint = QLabel('选中即恢复商家链接、搜索词及全部筛选条件。修改后点击“更新”保存到预设。'); hint.setObjectName('muted'); hint.setWordWrap(True); left.addWidget(hint)
         left.addStretch()
         scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setWidget(sidebar); scroll.setMinimumWidth(335)
         split.addWidget(scroll)
         results = QWidget(); results.setObjectName('results'); right = QVBoxLayout(results); right.setContentsMargins(16,16,16,12)
+        right.addWidget(filter_box)
         self.summary = QLabel('填写商家链接，开始第一次查询'); self.summary.setObjectName('section'); right.addWidget(self.summary)
         self.search = QLineEdit(); self.search.setPlaceholderText('在结果中搜索商品名称或商家…'); right.addWidget(self.search)
         self.model = ProductsModel(); self.table = QTableView(); self.table.setModel(self.model)
         self.table.setAlternatingRowColors(True); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers); self.table.setWordWrap(False)
         self.table.verticalHeader().setVisible(False); self.table.verticalHeader().setDefaultSectionSize(38)
-        for i, width in enumerate([370,90,70,130,125,85]): self.table.setColumnWidth(i,width)
+        for i, width in enumerate([330,85,80,110,115,80,85]): self.table.setColumnWidth(i,width)
         self.table.horizontalHeader().setSectionResizeMode(0,QHeaderView.Interactive)
         self.table.horizontalHeader().setStretchLastSection(True)
         right.addWidget(self.table,1)
@@ -253,6 +270,12 @@ class Window(QMainWindow):
         self.loading = old
         if not old: self.changed()
 
+    def clear_search_conditions(self):
+        self.set_filters(dict(self.filters(), any='', all='', exclude='', search=''))
+
+    def clear_filter_conditions(self):
+        self.set_filters(dict(self.filters(), minimum='', maximum='', inclusive=False, stock=False, category='', stock_min='', stock_max=''))
+
     def clear_filters(self):
         self.set_filters(dict(DEFAULT_FILTERS, any='', all='', exclude='', maximum='', minimum='', stock=False, category='', search=''))
 
@@ -286,7 +309,7 @@ class Window(QMainWindow):
         restored = QItemSelection()
         for identity in selected_keys:
             if identity in rows:
-                row = rows[identity]; restored.select(self.model.index(row,0),self.model.index(row,5))
+                row = rows[identity]; restored.select(self.model.index(row,0),self.model.index(row,self.model.columnCount()-1))
         selection.select(restored,QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows)
         if current_key in rows: selection.setCurrentIndex(self.model.index(rows[current_key],0),QItemSelectionModel.NoUpdate)
         if anchor in rows:
@@ -297,7 +320,9 @@ class Window(QMainWindow):
         selection.blockSignals(False)
         done = sum(o.complete for o in self.outcomes)
         state = '查询中' if self.worker is not None else '全部完成' if self.shops and done==len(self.shops) else '部分数据' if self.shops else '尚未查询'
-        self.summary.setText(f'{len(matches)} 件命中 / {len(products)} 件已获取 · {done}/{len(self.shops)} 家完整 · {state}')
+        known = sum(p.stock_count for p in matches if p.stock_count is not None)
+        unknown = sum(p.stock_count is None for p in matches)
+        self.summary.setText(f'已公开库存合计 {known} 件' + (f' · {unknown}款数量未公开' if unknown else '') + '\n' + f'{len(matches)} 件命中 / {len(products)} 件已获取 · {done}/{len(self.shops)} 家完整 · {state}')
         if self.selected(): self.show_detail()
         else: self.detail.setText('选中商品查看完整名称，双击打开商品页。')
 
@@ -364,8 +389,15 @@ class Window(QMainWindow):
         self.presets.blockSignals(True); self.presets.clear(); self.presets.addItem('选择预设，一键应用')
         self.presets.addItems([p['name'] for p in self.store.data['presets']]); self.presets.setCurrentIndex(index); self.presets.blockSignals(False)
 
+    def restore_builtin(self):
+        self.urls.setPlainText('\n'.join(DEFAULT_URLS))
+        self.set_filters(DEFAULT_FILTERS)
+
     def apply_preset(self,index):
-        if index>0: self.set_filters(self.store.data['presets'][index-1]['filters'])
+        if index>0:
+            preset = self.store.data['presets'][index-1]
+            self.urls.setPlainText(preset['urls'])
+            self.set_filters(preset['filters'])
 
     def preset_name(self, initial=''):
         name, ok=QInputDialog.getText(self,'预设名称','输入名称（最多80字）',text=initial)
@@ -380,14 +412,14 @@ class Window(QMainWindow):
             if name is None: return
             presets=copy.deepcopy(self.store.data['presets'])
             if any(norm(p['name'])==norm(name) for p in presets): raise ValueError('名称已存在，请换一个名称或使用“更新”。')
-            presets.append(dict(name=name,filters=filters)); self.persist(presets); self.refresh_presets(len(presets)); self.notice.setText('预设已保存。')
+            presets.append(dict(name=name,filters=filters,urls='\n'.join(s.url for s in parse_shops(self.urls.toPlainText())))); self.persist(presets); self.refresh_presets(len(presets)); self.notice.setText('预设已保存。')
         except (ValueError,OSError) as exc: self.notice.setText(str(exc))
 
     def update_preset(self):
         index=self.presets.currentIndex()-1
         if index<0: self.notice.setText('请先选择需要更新的预设。'); return
         try:
-            presets=copy.deepcopy(self.store.data['presets']); presets[index]['filters']=self.filters(); self.persist(presets); self.notice.setText('预设已更新。')
+            presets=copy.deepcopy(self.store.data['presets']); presets[index]['filters']=self.filters(); presets[index]['urls']='\n'.join(s.url for s in parse_shops(self.urls.toPlainText())); self.persist(presets); self.notice.setText('预设已更新。')
         except (ValueError,OSError) as exc: self.notice.setText(str(exc))
 
     def rename_preset(self):
