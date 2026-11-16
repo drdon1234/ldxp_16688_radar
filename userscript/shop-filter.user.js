@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         链动小铺 / 16688 组合筛选
 // @namespace    local.shop-filter
-// @version      1.4.0
+// @version      1.5.0
 // @description  按分类、标题关键词、价格与是否有货组合筛选；支持全部分类汇总。
 // @match        https://wzyp.cn/shop/*
 // @match        https://www.wzyp.cn/shop/*
@@ -24,7 +24,7 @@
   const text = e => e?.textContent?.trim() || '';
   const normalize = s => String(s).normalize('NFKC').toLowerCase();
   const tokens = s => normalize(s).split(/[\n,，;；|]+/).map(x => x.trim()).filter(Boolean);
-  const defaults = { any: '5x,10x', all: 'team', not: '1x', min: '', max: '35', inclusive: false, stock: true, sort: 'asc', query: '', compact: false };
+  const defaults = { any: '5x,10x', all: 'team', not: '1x, 网页, 不是5x, 不是10x, free', min: '', max: '35', inclusive: false, stock: true, sort: 'asc', query: '', compact: false, stockMin: '', stockMax: '', filterAny: '5x,10x', filterAll: 'team', filterNot: '1x, 网页, 不是5x, 不是10x' };
   const storageKey = () => 'shop-filter:' + location.pathname;
   const is16688 = /(^|\.)16688\.com\.cn$/.test(location.hostname);
   const categorySelector = is16688 ? '.category-side .category-item' : '.fl_box_leng, .arco-menu-item:has(.category-name-text)';
@@ -48,14 +48,19 @@
     const categoryId = String(is16688 ? item.goods_category_no || 'uncategorized' : item.category?.id ?? '');
     const category = categories.find(c => c.id === categoryId) || { id: categoryId, name: is16688 ? '未分类' : item.category?.name || '未分类' };
     const url = new URL((is16688 ? '/goods/' : '/item/') + encodeURIComponent(id), location.origin);
-    return { id, name: item.name, price, stock, category, url: url.href };
+    return { id, name: item.name, price, stock, count: Number.isInteger(count) && count >= 0 ? count : null, category, url: url.href };
   }
   function matches(item, f) {
     const name = normalize(item.name);
     const any = tokens(f.any), all = tokens(f.all), not = tokens(f.not);
+    const filterAny = tokens(f.filterAny), filterAll = tokens(f.filterAll), filterNot = tokens(f.filterNot);
     return !!name && (!any.length || any.some(k => name.includes(k)))
       && all.every(k => name.includes(k)) && !not.some(k => name.includes(k))
+      && (!filterAny.length || filterAny.some(k => name.includes(k)))
+      && filterAll.every(k => name.includes(k)) && !filterNot.some(k => name.includes(k))
       && (!f.stock || item.stock === true)
+      && (!f.stockMin || item.count !== null && item.count >= Number(f.stockMin))
+      && (!f.stockMax || item.count !== null && item.count <= Number(f.stockMax))
       && (f.min === '' || Number.isFinite(item.price) && item.price >= Number(f.min))
       && (f.max === '' || Number.isFinite(item.price) && (f.inclusive ? item.price <= Number(f.max) : item.price < Number(f.max)));
   }
@@ -65,10 +70,10 @@
   // Shadow DOM 隔离样式；不改 Vue 管理的商品节点，不破坏原站购买事件和瀑布流。
   const root = host.attachShadow({ mode: 'open' });
   root.innerHTML = `<style>
-    :host{display:block;position:fixed;z-index:2147483000;top:24px;right:24px;width:420px;max-width:calc(100vw - 24px);color:#1d2635;font:14px/1.5 system-ui,sans-serif;color-scheme:light;text-align:left}
+    :host{display:block;position:fixed;z-index:2147483000;top:24px;right:24px;width:780px;max-width:calc(100vw - 24px);color:#1d2635;font:14px/1.5 system-ui,sans-serif;color-scheme:light;text-align:left}
     *{box-sizing:border-box}.window{background:#fff;border:1px solid #d6dfec;border-radius:16px;box-shadow:0 16px 48px #152b4d26,0 3px 10px #152b4d12;overflow:hidden;display:flex;flex-direction:column;max-height:calc(100dvh - 24px)}
     .header{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid #e6ecf4;cursor:grab;touch-action:none;user-select:none;background:#f7faff}.header:active{cursor:grabbing}.brand{width:36px;height:36px;display:grid;place-items:center;background:#e5efff;color:#165dce;border-radius:10px;flex:none}.brand svg{width:21px;height:21px}.heading{flex:1;min-width:0}.title{font-size:16px;font-weight:700;letter-spacing:.01em}.subtitle{font-size:12px;color:#5d6b80;margin-top:2px}.header button{padding:6px;width:32px;min-height:32px;display:grid;place-items:center;border:0;background:transparent;color:#56657a}.header button:hover{background:#e6edf7}.header button svg{width:18px;height:18px}
-    form{margin:0;padding:18px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#bbc9dc #f7faff}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.wide{grid-column:1/-1}
+    form{display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr);gap:16px;margin:0;padding:18px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#bbc9dc #f7faff}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.wide{grid-column:1/-1}
     label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:550;color:#45556b}input,select,button{font:14px/1.5 system-ui,sans-serif;border-radius:8px;border:1px solid #bdc9da;min-height:38px;padding:8px 10px;color:#1d2635;background:white;min-width:0}
     input,select{width:100%;caret-color:#165dce}input::placeholder{color:#606c7e}input[type=checkbox]{width:17px;min-height:17px;accent-color:#165dce}
     .check{display:flex;flex-direction:row;align-items:center;gap:7px}.options{display:flex;flex-wrap:wrap;gap:16px;padding:16px 0}.actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.actions .primary{flex:1}.actions [data-action=clear],.actions [data-action=preset]{font-size:12px;padding:8px}
@@ -78,38 +83,49 @@
     article{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px 12px;padding:14px 0;border-bottom:1px solid #e6ecf4}article:last-child{border-bottom:0}article .product-link{grid-column:1/-1;justify-self:end;min-height:30px;padding:4px 9px;font-size:12px;color:#165dce;border-color:#ccdcf4;background:#f6f9ff}
     .product-link{display:inline-block;text-decoration:none;border:1px solid #ccdcf4;border-radius:8px;font:12px/1.5 system-ui,sans-serif}.product-link:hover{background:#e5efff}.product-link:focus-visible{outline:2px solid #165dce;outline-offset:2px}
     .result-tools{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid #e6ecf4}.result-tools .wide{grid-column:1/-1}.result-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.result-actions button,.export{font:12px/1.5 system-ui,sans-serif;min-height:30px;padding:5px 9px}.export{color:#165dce;text-decoration:none;border:1px solid #ccdcf4;border-radius:8px}.export:hover{background:#edf3fc}.row-actions{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}.row-actions button{font-size:12px;min-height:30px;padding:4px 9px;color:#165dce;border-color:#ccdcf4;background:#f6f9ff}.results.compact article{padding:9px 0;gap:4px 10px}.results.compact .name{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.timestamp{font-size:11px;color:#5d6b80;margin-top:6px}.notice{font-size:12px;color:#165dce;margin-top:6px}.notice:empty{display:none}
-    .filter-settings>summary{cursor:pointer;color:#45556b;font-size:13px;font-weight:600;padding-bottom:10px}.filter-settings>summary:focus-visible,.export:focus-visible{outline:2px solid #165dce;outline-offset:2px}
-    .presets{padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #e6ecf4;display:grid;gap:9px}.preset-edit{display:flex;gap:7px}.preset-edit input{flex:1;width:0}.preset-buttons{display:flex;gap:6px;flex-wrap:wrap}.preset-buttons button,.preset-edit button{font-size:12px;padding:6px 9px;min-height:32px}.preset-status{font-size:12px;color:#52627a;overflow-wrap:anywhere;min-height:18px}.preset-status.error{color:#b42318}.preset-buttons .danger{color:#a42525}
+    .search-settings>summary,.filter-settings>summary{cursor:pointer;color:#45556b;font-size:13px;font-weight:600;padding-bottom:10px}.filter-settings>summary:focus-visible,.export:focus-visible{outline:2px solid #165dce;outline-offset:2px}
+    details.search-settings,details.filter-settings{padding:12px;background:#f8faff;border:1px solid #d6dfec;border-radius:10px;margin-bottom:12px} details button{margin-top:8px;font-size:12px;min-height:30px;padding:4px 9px} .inventory-total{font-weight:650;color:#173b71;background:#edf4ff;padding:10px;border-radius:8px;margin-top:10px}
+    .presets{padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid #e6ecf4;display:grid;gap:9px}.presets:not([open])>:not(summary){display:none}.presets>summary{cursor:pointer;font-weight:600}.preset-edit{display:flex;gap:7px}.preset-edit input{flex:1;width:0}.preset-buttons{display:flex;gap:6px;flex-wrap:wrap}.preset-buttons button,.preset-edit button{font-size:12px;padding:6px 9px;min-height:32px}.preset-status{font-size:12px;color:#52627a;overflow-wrap:anywhere;min-height:18px}.preset-status.error{color:#b42318}.preset-buttons .danger{color:#a42525}
     .name{overflow-wrap:anywhere}.meta{color:#536075;font-size:12px;margin-top:3px}.price{font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
     ::selection{background:#d5e6ff;color:#153966}[hidden]{display:none!important}
     .launcher{display:flex;align-items:center;gap:9px;background:#165dce;color:white;border:1px solid #165dce;border-radius:28px;padding:12px 18px;box-shadow:0 6px 20px #163c7133;font-weight:650;white-space:nowrap}.launcher:hover{background:#104bac}.launcher svg{width:19px;height:19px}:host([data-collapsed]){width:max-content}.launcher[data-busy=true]::after{content:'';width:6px;height:6px;background:#fff;border-radius:50%}
     @media(max-width:480px){:host{top:12px;right:12px}form{padding:14px}.header{padding:13px 14px}.window{border-radius:12px}.actions{gap:6px}.actions button{padding:8px}}
     @media(prefers-reduced-motion:no-preference){button{transition:background-color .15s ease,border-color .15s ease}}
+ .search-column,.filter-column{min-width:0}.filter-column{border-left:1px solid #e6ecf4;padding-left:16px}.search-column .actions{margin-top:12px}.search-column .fields{grid-template-columns:1fr}.search-column .fields label{grid-column:1/-1}@media(max-width:640px){form{grid-template-columns:1fr}.filter-column{border-left:0;border-top:1px solid #e6ecf4;padding:16px 0 0}}
   </style><section class="window" aria-label="商品组合筛选悬浮窗"><header class="header" title="拖动标题栏移动窗口">
     <span class="brand" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg></span>
     <div class="heading"><div class="title">商品组合筛选</div><div class="subtitle">跨分类查找 · 拖动标题栏移动</div></div>
     <button type="button" data-action="minimize" aria-label="收起筛选窗口" title="收起（Esc）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
-  </header><form><section class="presets" aria-label="筛选预设管理">
+  </header><form><div class="search-column"><details class="presets" aria-label="筛选预设管理"><summary>命名预设</summary>
     <label>命名预设<select name="presetChoice"><option value="">选择预设即可应用</option></select></label>
     <div class="preset-edit"><input name="presetName" aria-label="预设名称" maxlength="80" placeholder="预设名称，例如：低价有货 Team"><button type="button" data-preset="save">另存为预设</button></div>
     <div class="preset-buttons"><button type="button" data-preset="apply">应用所选</button><button type="button" data-preset="update">更新条件</button><button type="button" data-preset="rename">重命名</button><button class="danger" type="button" data-preset="delete">删除</button><button type="button" data-preset="undo" hidden>撤销删除</button></div>
     <div class="preset-status" role="status" aria-live="polite">独立预设 · 同一油猴脚本跨商家、跨平台共享。</div>
-  </section><details class="filter-settings" open><summary>筛选条件</summary>
+  </details><details class="search-settings" open><summary>搜索条件（固定查询）</summary>
     <div class="fields">
-      <label class="wide">筛选分类<select name="scope"><option value="current">当前分类</option><option value="all">全部分类</option></select></label>
+      <label class="wide">包含任意一个词<input name="any" placeholder="5x,10x"></label>
+      <label>同时包含所有词<input name="all" placeholder="team"></label>
+      <label>排除任意一个词<input name="not" placeholder="1x"></label>
+    </div><p class="hint">查询时固定使用；修改后点击“加载并筛选”才更新商品集合。多个词用逗号分隔。</p><button type="button" data-action="clear-search">清空搜索词</button>
+  </details><div class="actions">
+    <button class="primary" type="submit">加载并筛选</button><button type="button" data-action="stop" hidden>停止</button><button type="button" data-action="preset">恢复默认</button><button type="button" data-action="clear">清除筛选</button>
+  </div>
+</div><div class="filter-column"><details class="filter-settings" open><summary>筛选条件（本地即时）</summary>
+    <div class="fields">
+      <label class="wide">包含任意一个词<input name="filterAny" placeholder="例如：5x,10x"></label>
+      <label>同时包含所有词<input name="filterAll" placeholder="例如：team"></label>
+      <label>排除任意一个词<input name="filterNot" placeholder="例如：1x"></label>
+      <p class="hint wide">只筛选已经获取的商品，修改后立即生效，不会重新请求接口。</p>
+      <label class="wide">分类<select name="scope"><option value="current">当前分类</option><option value="all">全部分类</option></select></label>
       <label>最低价格（元，含）<input name="min" type="number" min="0" step="any" placeholder="不限"></label>
       <label>最高价格（元）<input name="max" type="number" min="0" step="any" placeholder="不限"></label>
-      <label class="wide">包含任意一个词（或）<input name="any" placeholder="5x,10x"></label>
-      <label>同时包含所有词（且）<input name="all" placeholder="team"></label>
-      <label>排除任意一个词<input name="not" placeholder="1x"></label>
-    </div>
-    <div class="options"><label class="check"><input name="stock" type="checkbox">仅看有货</label><label class="check"><input name="inclusive" type="checkbox">包含最高价</label></div><div class="actions">
-      <button class="primary" type="submit" title="重新获取最新商品（Ctrl / ⌘ + Enter）">加载并筛选</button><button type="button" data-action="stop" hidden>停止</button><button type="button" data-action="preset">恢复默认</button><button type="button" data-action="clear">清除筛选</button></div>
-    <p class="hint">关键词用逗号分隔，忽略大小写，按标题字面匹配。通过接口后台读取，不改变原页面分类和滚动位置。</p>
-    </details>
-    <div class="result-tools"><label>结果排序<select name="sort"><option value="asc">价格：从低到高</option><option value="desc">价格：从高到低</option><option value="original">原始顺序</option></select></label><label>结果内搜索<input name="query" type="search" placeholder="进一步查找标题"></label><div class="result-actions wide"><label class="check"><input name="compact" type="checkbox">紧凑显示</label><button type="button" data-action="copy-all">复制结果链接</button><a class="export" href="#" download="商品筛选结果.csv">导出 CSV</a></div></div>
-    <p class="status" role="status" aria-live="polite">请选择分类，然后加载并筛选。</p><div class="timestamp"></div><div class="notice" role="status" aria-live="polite"></div><div class="results" aria-label="筛选结果"></div>
-  </form></section><button class="launcher" type="button" aria-label="展开商品筛选" aria-expanded="false" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>商品筛选</button>`;
+      <label>最少库存（含）<input name="stockMin" type="number" min="0" step="1" placeholder="不限"></label>
+      <label>最多库存（含）<input name="stockMax" type="number" min="0" step="1" placeholder="不限"></label>
+    </div><div class="options"><label class="check"><input name="stock" type="checkbox">仅看有货</label><label class="check"><input name="inclusive" type="checkbox">包含最高价</label></div>
+    <p class="hint">设置数量范围后，不包含库存数量未公开的商品。</p><button type="button" data-action="clear-filter">清空筛选限制</button>
+  </details>    <div class="result-tools"><label>结果排序<select name="sort"><option value="asc">价格：从低到高</option><option value="desc">价格：从高到低</option><option value="original">原始顺序</option></select></label><label>结果内搜索<input name="query" type="search" placeholder="进一步查找标题"></label><div class="result-actions wide"><label class="check"><input name="compact" type="checkbox">紧凑显示</label><button type="button" data-action="copy-all">复制结果链接</button><a class="export" href="#" download="商品筛选结果.csv">导出 CSV</a></div></div>
+    <p class="status" role="status" aria-live="polite">请选择分类，然后加载并筛选。</p><div class="inventory-total" aria-live="polite"></div><div class="timestamp"></div><div class="notice" role="status" aria-live="polite"></div><div class="results" aria-label="筛选结果"></div>
+  </div></form></section><button class="launcher" type="button" aria-label="展开商品筛选" aria-expanded="false" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>商品筛选</button>`;
   document.body.prepend(host);
   const form = $('form', root), status = $('.status', root), results = $('.results', root);
   const windowPanel = $('.window', root), launcher = $('.launcher', root), header = $('.header', root);
@@ -169,13 +185,16 @@
   function presetMessage(value, error = false) { const node = $('.preset-status', root); node.textContent = value; node.classList.toggle('error', error); }
   function readPresets() {
     const raw = GM_getValue(presetStorageKey, null);
-    const items = raw === null ? [] : JSON.parse(raw);
+    const items = raw === null ? [{id:'builtin-team',name:'GPT_TEAM_5X',category:{kind:'all'},filters:{...defaults}}] : JSON.parse(raw);
     const ids = new Set(), names = new Set();
     if (!Array.isArray(items) || items.some(p => {
       if (!p || typeof p.id !== 'string' || !p.id || typeof p.name !== 'string' || !p.name.trim() || p.name.length > 80 || ids.has(p.id) || names.has(normalize(p.name)) || !p.category || !['all','named'].includes(p.category.kind) || (p.category.kind === 'named' && (typeof p.category.name !== 'string' || !p.category.name.trim())) || !p.filters || typeof p.filters !== 'object') return true;
+      p.filters = { ...defaults, ...p.filters };
       ids.add(p.id); names.add(normalize(p.name));
       return Object.keys(defaults).some(k => typeof p.filters[k] !== typeof defaults[k]) || !['asc','desc','original'].includes(p.filters.sort)
-        || ['min','max'].some(k => p.filters[k] !== '' && (!Number.isFinite(Number(p.filters[k])) || Number(p.filters[k]) < 0))
+        || ['min','max','stockMin','stockMax'].some(k => p.filters[k] !== '' && (!Number.isFinite(Number(p.filters[k])) || Number(p.filters[k]) < 0))
+        || ['stockMin','stockMax'].some(k => p.filters[k] !== '' && !Number.isInteger(Number(p.filters[k])))
+        || (p.filters.stockMin !== '' && p.filters.stockMax !== '' && Number(p.filters.stockMin) > Number(p.filters.stockMax))
         || (p.filters.min !== '' && p.filters.max !== '' && Number(p.filters.min) > Number(p.filters.max));
     })) throw new Error('预设数据格式异常，已保留原数据，未进行覆盖。');
     return items;
@@ -205,7 +224,7 @@
   }
   function snapshotPreset() {
     const f = filters();
-    if (!form.checkValidity() || (f.min !== '' && f.max !== '' && Number(f.min) > Number(f.max))) throw new Error('请先修正价格范围和输入内容，再保存预设。');
+    if ((f.stockMin !== '' && f.stockMax !== '' && Number(f.stockMin) > Number(f.stockMax)) || !form.checkValidity() || (f.min !== '' && f.max !== '' && Number(f.min) > Number(f.max))) throw new Error('请先修正价格范围和输入内容，再保存预设。');
     const category = resolveCategory(field('scope').value, currentCategoryName());
     // 分类编号属于商家；独立预设只保存“全部”或分类名称。
     return { category: category.all ? { kind: 'all' } : { kind: 'named', name: category.name }, filters: f };
@@ -377,6 +396,8 @@
   }
   function render() {
     const found = visibleItems();
+    const knownTotal = found.reduce((sum,item) => sum + (item.count ?? 0), 0), hiddenCount = found.filter(item => item.count === null).length;
+    $('.inventory-total', root).textContent = `已公开库存合计 ${knownTotal} 件${hiddenCount ? ` · ${hiddenCount}款数量未公开` : ''}`;
     results.classList.toggle('compact', field('compact').checked);
     $('.timestamp', root).textContent = fetchedAt ? '数据获取于 ' + fetchedAt.toLocaleString('zh-CN', { hour12: false }) + ' · 点击加载可刷新' : '';
     results.replaceChildren();
@@ -384,7 +405,7 @@
       const row = document.createElement('article');
       const detail = document.createElement('div'), name = document.createElement('div'), meta = document.createElement('div');
       name.className = 'name'; name.textContent = item.name; name.title = item.name;
-      meta.className = 'meta'; meta.textContent = `${item.category?.name || '当前分类'} · ${item.stock === true ? '有货' : item.stock === false ? '缺货' : '库存未识别'}`;
+      meta.className = 'meta'; meta.textContent = `${item.category?.name || '当前分类'} · ${item.stock === true ? '有货' : item.stock === false ? '缺货' : '库存未识别'} · 库存 ${item.count === null ? '未公开' : item.count}`;
       detail.append(name, meta);
       const price = document.createElement('span'); price.className = 'price'; price.textContent = Number.isFinite(item.price) ? `¥${item.price}` : '价格未识别';
       const locate = document.createElement('a'); locate.className = 'product-link'; locate.textContent = '查看商品';
@@ -405,6 +426,7 @@
     if (!form.reportValidity()) return;
     const f = filters();
     if (f.min !== '' && f.max !== '' && Number(f.min) > Number(f.max)) { message('最低价格不能高于最高价格。', true); return; }
+    if (f.stockMin !== '' && f.stockMax !== '' && Number(f.stockMin) > Number(f.stockMax)) { message('最少库存不能高于最多库存。', true); return; }
     const scope = field('scope').value, currentName = currentCategoryName();
     controller?.abort(); controller = new AbortController();
     const signal = controller.signal, id = ++generation;
@@ -424,8 +446,10 @@
   form.addEventListener('submit', run);
   $('[data-action=stop]', root).addEventListener('click', stop);
   $('[data-action=preset]', root).addEventListener('click', () => { setFields(defaults); saveFilters(); markPresetEdited(); notice('已恢复默认条件和价格升序。'); render(); });
-  $('[data-action=clear]', root).addEventListener('click', () => { controller?.abort(); controller = null; generation++; setBusy(false); setFields({ ...defaults,any:'',all:'',not:'',min:'',max:'',stock:false }); saveFilters(); markPresetEdited(); render(); notice('已清除限制，保留已获取商品；默认按价格升序。'); });
-  form.addEventListener('input', event => { if (['scope','presetName','presetChoice'].includes(event.target.name)) return; saveFilters(); markPresetEdited(); if (!busy) { notice(''); render(); } });
+  $('[data-action=clear-search]', root).addEventListener('click', () => { setFields({...filters(),any:'',all:'',not:'',query:''}); saveFilters(); markPresetEdited(); render(); });
+  $('[data-action=clear-filter]', root).addEventListener('click', () => { setFields({...filters(),filterAny:'',filterAll:'',filterNot:'',min:'',max:'',stockMin:'',stockMax:'',stock:false,inclusive:false}); saveFilters(); markPresetEdited(); render(); });
+  $('[data-action=clear]', root).addEventListener('click', () => { controller?.abort(); controller = null; generation++; setBusy(false); setFields({ ...defaults,any:'',all:'',not:'',filterAny:'',filterAll:'',filterNot:'',min:'',max:'',stock:false }); saveFilters(); markPresetEdited(); render(); notice('已清除限制，保留已获取商品；默认按价格升序。'); });
+  form.addEventListener('input', event => { if (['scope','presetName','presetChoice'].includes(event.target.name)) return; saveFilters(); markPresetEdited(); const fixedSearch = ['any','all','not'].includes(event.target.name); if (!busy && !fixedSearch) { notice(''); render(); } else if (fixedSearch) notice('搜索条件已修改；点击“加载并筛选”更新商品集合。'); });
   field('scope').addEventListener('change', () => { cache = []; complete = false; fetchedAt = null; loadedCategoryId = null; results.replaceChildren(); $('.timestamp', root).textContent = ''; notice(''); markPresetEdited(); message('分类已改变，请点击“加载并筛选”。'); });
   root.addEventListener('keydown', event => {
     if (event.key !== 'Enter') return;
@@ -441,7 +465,7 @@
     const items = visibleItems();
     if (busy || !items.length) { event.preventDefault(); notice(busy ? '请等待加载完成，或先停止查询。' : '没有可导出的结果。'); return; }
     const cell = value => { let s = String(value ?? ''); if (/^[\s]*[=+@-]/.test(s)) s = "'" + s; return '"' + s.replaceAll('"', '""') + '"'; };
-    const rows = [['商品名称','价格（元）','库存','分类','商品链接','查询范围完整','获取时间'], ...items.map(item => [item.name,Number.isFinite(item.price) ? item.price : '',item.stock === true ? '有货' : item.stock === false ? '缺货' : '未识别',item.category.name,item.url,complete ? '是' : '否',fetchedAt?.toISOString() || ''])];
+    const rows = [['商品名称','价格（元）','库存状态','库存数量','分类','商品链接','查询范围完整','获取时间'], ...items.map(item => [item.name,Number.isFinite(item.price) ? item.price : '',item.stock === true ? '有货' : item.stock === false ? '缺货' : '未识别',item.count ?? '未公开',item.category.name,item.url,complete ? '是' : '否',fetchedAt?.toISOString() || ''])];
     if (exportUrl) URL.revokeObjectURL(exportUrl);
     exportUrl = URL.createObjectURL(new Blob(['\uFEFF' + rows.map(row => row.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
     event.currentTarget.href = exportUrl;

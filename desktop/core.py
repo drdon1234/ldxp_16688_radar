@@ -62,62 +62,62 @@ class NetworkSession:
         return Response()
 
 DEFAULT_URLS = [
-    "https://wzyp.cn/shop/OUJ1HPBV",
-    "https://wzyp.cn/shop/oaoi",
-    "https://wzyp.cn/shop/2VWX76A4",
-    "https://wzyp.cn/shop/moyanovo",
-    "https://www.16688.com.cn/shop/S943903",
-    "https://www.16688.com.cn/shop/S396961",
-    "https://www.16688.com.cn/shop/S104052",
-    "https://wzyp.cn/shop/5H4X93E5",
-    "https://wzyp.cn/shop/QHN4YVQP",
-    "https://wzyp.cn/shop/Z65QS0QG",
-    "https://wzyp.cn/shop/mirage",
-    "https://wzyp.cn/shop/youzhi",
-    "https://www.16688.com.cn/shop/S967696",
-    "https://wzyp.cn/shop/GUEOI7Z9",
-    "https://wzyp.cn/shop/PAXOVOVJ",
-    "https://wzyp.cn/shop/KIJSS7TJ",
-    "https://wzyp.cn/shop/nailong888",
-    "https://wzyp.cn/shop/XSMWW894",
-    "https://www.16688.com.cn/shop/S335138",
-    "https://wzyp.cn/shop/YA3NLPX6",
-    "https://wzyp.cn/shop/NFCG5CVM",
-    "https://www.16688.com.cn/shop/S461375",
-    "https://wzyp.cn/shop/YUJI",
-    "https://www.16688.com.cn/shop/S265669",
-    "https://www.16688.com.cn/shop/S609525",
-    "https://wzyp.cn/shop/2E2KPQD1",
-    "https://wzyp.cn/shop/GU3XQH61",
-    "https://www.16688.com.cn/shop/S414108",
-    "https://wzyp.cn/shop/THSDTX79",
-    "https://wzyp.cn/shop/FC6GCKGG",
-    "https://wzyp.cn/shop/ton",
-    "https://wzyp.cn/shop/lanyy",
-    "https://wzyp.cn/shop/V4E0E6T7",
-    "https://wzyp.cn/shop/TH52WUW7",
-    "https://wzyp.cn/shop/7HVUEC3Y",
-    "https://wzyp.cn/shop/S5UL3UHI",
-    "https://wzyp.cn/shop/worgforde",
-    "https://wzyp.cn/shop/B9KFCWFO",
-    "https://wzyp.cn/shop/JYO0X15L",
-    "https://wzyp.cn/shop/7LFUCYI0",
-    "https://wzyp.cn/shop/4UOATQTU",
-    "https://wzyp.cn/shop/ai888",
-    "https://wzyp.cn/shop/qingwaAA",
-    "https://wzyp.cn/shop/FAJMDFWV",
-    "https://www.16688.com.cn/shop/S783117",
-    "https://wzyp.cn/shop/M18V0XVF",
-    "https://www.16688.com.cn/shop/S545395",
-    "https://wzyp.cn/shop/FRNX1ZU8",
-    "https://wzyp.cn/shop/DJFT26BF",
-    "https://wzyp.cn/shop/hzapi",
-    "https://wzyp.cn/shop/RRIM3VSF",
-    "https://www.16688.com.cn/shop/S522379",
-    "https://www.16688.com.cn/shop/S889034"
+    'https://wzyp.cn/shop/OUJ1HPBV',
+    'https://wzyp.cn/shop/oaoi',
+    'https://wzyp.cn/shop/2VWX76A4',
+    'https://wzyp.cn/shop/moyanovo',
+    'https://www.16688.com.cn/shop/S943903',
+    'https://www.16688.com.cn/shop/S396961',
+    'https://www.16688.com.cn/shop/S104052',
+    'https://wzyp.cn/shop/5H4X93E5',
+    'https://wzyp.cn/shop/QHN4YVQP',
+    'https://wzyp.cn/shop/Z65QS0QG',
+    'https://wzyp.cn/shop/mirage',
+    'https://wzyp.cn/shop/youzhi',
+    'https://www.16688.com.cn/shop/S967696',
+    'https://wzyp.cn/shop/GUEOI7Z9',
+    'https://wzyp.cn/shop/PAXOVOVJ',
+    'https://wzyp.cn/shop/KIJSS7TJ',
+    'https://wzyp.cn/shop/nailong888',
+    'https://wzyp.cn/shop/XSMWW894',
+    'https://www.16688.com.cn/shop/S335138',
+    'https://wzyp.cn/shop/YA3NLPX6',
+    'https://wzyp.cn/shop/NFCG5CVM',
+    'https://www.16688.com.cn/shop/S461375',
+    'https://wzyp.cn/shop/YUJI',
+    'https://www.16688.com.cn/shop/S265669',
+    'https://www.16688.com.cn/shop/S609525',
+    'https://wzyp.cn/shop/2E2KPQD1',
+    'https://wzyp.cn/shop/GU3XQH61',
+    'https://www.16688.com.cn/shop/S414108',
+    'https://wzyp.cn/shop/THSDTX79',
+    'https://wzyp.cn/shop/FC6GCKGG',
+    'https://wzyp.cn/shop/ton',
+    'https://wzyp.cn/shop/lanyy',
+    'https://wzyp.cn/shop/V4E0E6T7',
+    'https://wzyp.cn/shop/TH52WUW7',
+    'https://wzyp.cn/shop/7HVUEC3Y',
+    'https://wzyp.cn/shop/S5UL3UHI',
+    'https://wzyp.cn/shop/worgforde',
+    'https://wzyp.cn/shop/B9KFCWFO',
+    'https://wzyp.cn/shop/JYO0X15L',
+    'https://wzyp.cn/shop/7LFUCYI0',
+    'https://wzyp.cn/shop/4UOATQTU',
+    'https://wzyp.cn/shop/ai888',
+    'https://wzyp.cn/shop/qingwaAA',
+    'https://wzyp.cn/shop/FAJMDFWV',
+    'https://www.16688.com.cn/shop/S783117',
+    'https://wzyp.cn/shop/M18V0XVF',
+    'https://www.16688.com.cn/shop/S545395',
+    'https://wzyp.cn/shop/FRNX1ZU8',
+    'https://wzyp.cn/shop/DJFT26BF',
+    'https://wzyp.cn/shop/hzapi',
+    'https://wzyp.cn/shop/RRIM3VSF',
+    'https://www.16688.com.cn/shop/S522379',
+    'https://www.16688.com.cn/shop/S889034',
 ]
-DEFAULT_FILTERS = dict(any='5x,10x', all='team', exclude='1x', minimum='', maximum='35',
-                       inclusive=False, stock=True, category='', search='', sort='asc')
+DEFAULT_FILTERS = {'any': '5x,10x', 'all': 'team', 'exclude': '1x, 网页, 不是5x, 不是10x, free', 'minimum': '', 'maximum': '35', 'inclusive': False, 'stock': True, 'category': '', 'search': '', 'sort': 'asc', 'stock_min': '', 'stock_max': '', 'filter_any': '5x,10x', 'filter_all': 'team', 'filter_exclude': '1x, 网页, 不是5x, 不是10x'}
+DEFAULT_PRESET_NAME = 'GPT_TEAM_5X'
 ALLOWED_HOSTS = {'wzyp.cn', 'www.wzyp.cn', 'ldxp.cn', 'www.ldxp.cn', '16688.com.cn', 'www.16688.com.cn'}
 
 
@@ -183,6 +183,7 @@ class Product:
     shop_url: str
     platform: str
     url: str
+    stock_count: int | None = None
 
 
 @dataclass
@@ -320,7 +321,8 @@ def parse_product(raw, shop, shop_name, categories):
         shop_name = str((raw.get('user') or {}).get('nickname') or shop_name)
     return Product(identifier, raw['name'], number(raw.get('price')), stock, category,
                    shop_name, shop.url, shop.platform,
-                   shop.origin + ('/goods/' if is16688 else '/item/') + quote(identifier, safe=''))
+                   shop.origin + ('/goods/' if is16688 else '/item/') + quote(identifier, safe=''),
+                   int(count) if count is not None and count >= 0 and count.is_integer() else None)
 
 
 def fetch_shop(shop, cancel, progress=lambda *_: None, session_factory=NetworkSession):
@@ -388,6 +390,9 @@ def fetch_shop(shop, cancel, progress=lambda *_: None, session_factory=NetworkSe
 
 def validate_filters(values):
     f = dict(DEFAULT_FILTERS, **{k: v for k, v in values.items() if k in DEFAULT_FILTERS})
+    # 旧配置的关键词同时作为本地筛选词迁移，之后两组可独立调整。
+    for old, new in (('any', 'filter_any'), ('all', 'filter_all'), ('exclude', 'filter_exclude')):
+        if new not in values: f[new] = f[old]
     for key, default in DEFAULT_FILTERS.items():
         if not isinstance(f[key], type(default)):
             raise ValueError('筛选条件格式错误：' + key)
@@ -396,6 +401,11 @@ def validate_filters(values):
             raise ValueError('价格必须是非负数字，留空表示不限')
     if f['minimum'] and f['maximum'] and float(f['minimum']) > float(f['maximum']):
         raise ValueError('最低价格不能高于最高价格')
+    for key in ('stock_min', 'stock_max'):
+        if f[key] and (number(f[key]) is None or number(f[key]) < 0 or not number(f[key]).is_integer()):
+            raise ValueError('库存数量必须是非负整数，留空表示不限')
+    if f['stock_min'] and f['stock_max'] and int(float(f['stock_min'])) > int(float(f['stock_max'])):
+        raise ValueError('最低库存不能高于最高库存')
     if f['sort'] not in ('asc', 'desc', 'original'):
         raise ValueError('排序条件不正确')
     return f
@@ -404,13 +414,18 @@ def validate_filters(values):
 def filter_products(products, values):
     f = validate_filters(values)
     words = lambda s: [norm(x.strip()) for x in re.split(r'[,，;；|\n]+', s) if x.strip()]
-    any_words, all_words, exclude = words(f['any']), words(f['all']), words(f['exclude'])
+    search_any, search_all, search_exclude = words(f['any']), words(f['all']), words(f['exclude'])
+    filter_any, filter_all, filter_exclude = words(f['filter_any']), words(f['filter_all']), words(f['filter_exclude'])
     found = []
     for item in products:
         name = norm(item.name)
-        if any_words and not any(k in name for k in any_words):
+        if search_any and not any(k in name for k in search_any):
             continue
-        if not all(k in name for k in all_words) or any(k in name for k in exclude):
+        if not all(k in name for k in search_all) or any(k in name for k in search_exclude):
+            continue
+        if filter_any and not any(k in name for k in filter_any):
+            continue
+        if not all(k in name for k in filter_all) or any(k in name for k in filter_exclude):
             continue
         if f['stock'] and item.stock is not True:
             continue
@@ -421,6 +436,10 @@ def filter_products(products, values):
         if f['minimum'] and (item.price is None or item.price < float(f['minimum'])):
             continue
         if f['maximum'] and (item.price is None or (item.price > float(f['maximum']) if f['inclusive'] else item.price >= float(f['maximum']))):
+            continue
+        if f['stock_min'] and (item.stock_count is None or item.stock_count < int(float(f['stock_min']))):
+            continue
+        if f['stock_max'] and (item.stock_count is None or item.stock_count > int(float(f['stock_max']))):
             continue
         found.append(item)
     if f['sort'] != 'original':
@@ -437,16 +456,16 @@ def export_csv(path, products, outcomes, fetched_at):
         return "'" + s if re.match(r'^\s*[=+@-]', s) else s
     with open(path, 'w', encoding='utf-8-sig', newline='') as handle:
         writer = csv.writer(handle)
-        writer.writerow(['商品名称','价格（元）','库存','分类','商家','平台','商品链接','该商家数据完整','获取时间'])
+        writer.writerow(['商品名称','价格（元）','库存状态','库存数量','分类','商家','平台','商品链接','该商家数据完整','获取时间'])
         for p in products:
-            writer.writerow([safe(v) for v in [p.name, p.price if p.price is not None else '', '有货' if p.stock else '缺货' if p.stock is False else '未识别', p.category, p.shop_name, p.platform, p.url, '是' if complete.get(p.shop_url, False) else '否', times.get(p.shop_url,fetched_at)]])
+            writer.writerow([safe(v) for v in [p.name, p.price if p.price is not None else '', '有货' if p.stock else '缺货' if p.stock is False else '未识别', p.stock_count if p.stock_count is not None else '未公开', p.category, p.shop_name, p.platform, p.url, '是' if complete.get(p.shop_url, False) else '否', times.get(p.shop_url,fetched_at)]])
 
 
 class Store:
     def __init__(self, directory):
         self.path = Path(directory) / 'settings.json'
         self.error = ''
-        self.data = {'urls': '\n'.join(DEFAULT_URLS), 'filters': dict(DEFAULT_FILTERS), 'presets': []}
+        self.data = {'urls': '\n'.join(DEFAULT_URLS), 'filters': dict(DEFAULT_FILTERS), 'presets': [dict(name=DEFAULT_PRESET_NAME, urls='\n'.join(DEFAULT_URLS), filters=dict(DEFAULT_FILTERS))]}
         if self.path.exists():
             try:
                 data = json.loads(self.path.read_text(encoding='utf-8'))
@@ -459,6 +478,8 @@ class Store:
                         raise ValueError('预设结构或名称错误')
                     names.add(norm(p['name']))
                     p['filters'] = validate_filters(p['filters'])
+                    p.setdefault('urls', data['urls'])
+                    if not isinstance(p['urls'], str): raise ValueError('预设商家链接格式错误')
                 self.data = data
             except Exception as exc:
                 self.error = f'配置读取失败，原文件未被覆盖：{exc}'

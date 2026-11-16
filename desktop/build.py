@@ -13,5 +13,5 @@ with tempfile.TemporaryDirectory(prefix='merchant-build-') as scratch:
     PyInstaller.__main__.run(['--noconfirm', '--clean', '--onefile', '--windowed',
         '--name', '商家联合筛选器', '--distpath', str(source.parent),
         '--workpath', str(Path(scratch) / 'work'), '--specpath', scratch,
-        '--exclude-module', 'PySide6.QtQml', '--exclude-module', 'PySide6.QtQuick',
+        '--exclude-module', 'PySide6.QtQml', '--exclude-module', 'PySide6.QtQuick', '--icon', str(source / 'icon.ico'), '--add-data', f'{source / "icon.ico"}{os.pathsep}.',
         str(source / 'app.py')])
