@@ -148,7 +148,7 @@ class Window(QMainWindow):
         self.loading = True
         self.setWindowTitle('商家联合筛选器 · 链动小铺 / 16688')
         self.resize(1320, 860)
-        self.setMinimumSize(960, 650)
+        self.setMinimumSize(1120, 680)
         root = QWidget()
         layout = QVBoxLayout(root)
         layout.setContentsMargins(22, 18, 22, 16)
@@ -175,29 +175,32 @@ class Window(QMainWindow):
         self.retry_button = QPushButton('仅重试未完成商家'); self.retry_button.clicked.connect(lambda: self.start(retry=True)); self.retry_button.setEnabled(False); left.addWidget(self.retry_button)
         search_box = QWidget(); search_box.setObjectName('searchConditions')
         search_layout = QVBoxLayout(search_box)
-        self.section(search_layout, '搜索条件')
+        self.section(search_layout, '搜索条件（固定查询）')
         form = QFormLayout(); form.setSpacing(9)
-        self.fields = {}
+        self.fields = {}; self.search_fields = {}; self.filter_fields = {}
         for key, label, hint in [('any','包含任一','例如：5x,10x'),('all','同时包含','例如：team'),('exclude','排除关键词','例如：1x')]:
-            edit = QLineEdit(); edit.setPlaceholderText(hint); self.fields[key] = edit; form.addRow(label, edit)
-        hint = QLabel('多个词用逗号分隔；忽略大小写，按文本包含匹配。'); hint.setObjectName('muted'); hint.setWordWrap(True)
+            edit = QLineEdit(); edit.setPlaceholderText(hint); self.fields[key] = edit; self.search_fields[key] = edit; form.addRow(label, edit)
+        hint = QLabel('查询时固定使用；修改后点击“查询全部商家”才会更新商品集合。多个词用逗号分隔。'); hint.setObjectName('muted'); hint.setWordWrap(True)
         form.addRow(hint)
         search_layout.addLayout(form)
         clear_search = QPushButton('清空搜索词'); clear_search.clicked.connect(self.clear_search_conditions); search_layout.addWidget(clear_search)
         left.insertWidget(3, search_box)
         filter_box = QWidget(); filter_box.setObjectName('filterConditions')
         filter_layout = QVBoxLayout(filter_box)
-        self.section(filter_layout, '筛选条件')
+        self.section(filter_layout, '筛选条件（本地即时）')
         form = QFormLayout(); form.setSpacing(9)
+        for key, label, hint in [('filter_any','包含任一','例如：5x,10x'),('filter_all','同时包含','例如：team'),('filter_exclude','排除关键词','例如：1x')]:
+            edit = QLineEdit(); edit.setPlaceholderText(hint); self.fields[key] = edit; self.filter_fields[key] = edit; form.addRow(label, edit)
+        keyword_hint = QLabel('只影响右侧已获取结果，修改后立即生效，不会重新请求接口。'); keyword_hint.setWordWrap(True); keyword_hint.setObjectName('muted'); form.addRow(keyword_hint)
         price = QHBoxLayout()
         for key, hint_text in [('minimum','最低 / 不限'),('maximum','最高 / 不限')]:
-            edit = QLineEdit(); edit.setPlaceholderText(hint_text); self.fields[key] = edit; price.addWidget(edit)
+            edit = QLineEdit(); edit.setPlaceholderText(hint_text); self.fields[key] = edit; self.filter_fields[key] = edit; price.addWidget(edit)
         form.addRow('价格范围', price)
         self.inclusive = QCheckBox('包含价格上限（≤）'); form.addRow('', self.inclusive)
         self.stock = QCheckBox('仅看有货'); form.addRow('', self.stock)
         quantity = QHBoxLayout()
         for key, placeholder in [('stock_min','最少 / 不限'),('stock_max','最多 / 不限')]:
-            edit = QLineEdit(); edit.setPlaceholderText(placeholder); self.fields[key]=edit; quantity.addWidget(edit)
+            edit = QLineEdit(); edit.setPlaceholderText(placeholder); self.fields[key]=edit; self.filter_fields[key] = edit; quantity.addWidget(edit)
         form.addRow('库存数量',quantity)
         hint = QLabel('数量范围包含上下限；设置后排除未公开数量的商品。'); hint.setWordWrap(True); hint.setObjectName('muted'); form.addRow(hint)
         self.category = QComboBox(); self.category.setEditable(True); self.category.addItem(''); self.category.lineEdit().setPlaceholderText('全部分类 / 输入分类名称')
@@ -223,9 +226,10 @@ class Window(QMainWindow):
         self.table.setAlternatingRowColors(True); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers); self.table.setWordWrap(False)
         self.table.verticalHeader().setVisible(False); self.table.verticalHeader().setDefaultSectionSize(38)
-        for i, width in enumerate([330,85,80,110,115,80,85]): self.table.setColumnWidth(i,width)
-        self.table.horizontalHeader().setSectionResizeMode(0,QHeaderView.Interactive)
-        self.table.horizontalHeader().setStretchLastSection(True)
+        for i, width in enumerate([260,72,68,92,96,72,72]): self.table.setColumnWidth(i,width)
+        header = self.table.horizontalHeader(); header.setSectionResizeMode(0,QHeaderView.Stretch)
+        for i in range(1, self.model.columnCount()): header.setSectionResizeMode(i,QHeaderView.Fixed)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         right.addWidget(self.table,1)
         self.detail = QLabel('选中商品查看完整名称，双击打开商品页。'); self.detail.setWordWrap(True); self.detail.setMinimumHeight(45); self.detail.setTextFormat(Qt.PlainText); right.addWidget(self.detail)
         row = QHBoxLayout(); self.button(row,'打开商品',self.open_product); self.button(row,'复制选中链接',self.copy_selected); self.button(row,'复制全部结果',self.copy_all); self.button(row,'导出 CSV',self.export); right.addLayout(row)
@@ -234,7 +238,7 @@ class Window(QMainWindow):
         self.notice = QLabel('就绪 · 数据仅在点击查询时刷新'); self.notice.setWordWrap(True); layout.addWidget(self.notice)
         self.setCentralWidget(root)
         self.timer = QTimer(self); self.timer.setSingleShot(True); self.timer.setInterval(250); self.timer.timeout.connect(self.changed)
-        for field in self.fields.values(): field.textChanged.connect(self.schedule)
+        for field in self.filter_fields.values(): field.textChanged.connect(self.schedule)
         self.search.textChanged.connect(self.schedule); self.urls.textChanged.connect(self.schedule)
         self.category.currentTextChanged.connect(self.schedule); self.sort.currentIndexChanged.connect(self.schedule)
         self.inclusive.toggled.connect(self.schedule); self.stock.toggled.connect(self.schedule)
@@ -244,7 +248,7 @@ class Window(QMainWindow):
         QShortcut(QKeySequence('Ctrl+F'),self,activated=self.search.setFocus)
         QShortcut(QKeySequence('Ctrl+R'),self,activated=self.start)
         QShortcut(QKeySequence('Ctrl+C'),self.table,activated=self.copy_selected)
-        self.set_filters(store.data['filters']); self.refresh_presets()
+        self.set_filters(store.data['filters']); self.active_search = {k: self.fields[k].text().strip() for k in self.search_fields}; self.refresh_presets()
         self.loading = False
         if store.error: self.notice.setText(store.error)
 
@@ -264,7 +268,7 @@ class Window(QMainWindow):
 
     def set_filters(self, values):
         old = self.loading; self.loading = True
-        for k,v in self.fields.items(): v.setText(values[k])
+        for k,v in self.fields.items(): v.setText(values.get(k, ''))
         self.stock.setChecked(values['stock']); self.inclusive.setChecked(values['inclusive'])
         self.category.setCurrentText(values['category']); self.sort.setCurrentIndex(self.sort.findData(values['sort'])); self.search.setText(values['search'])
         self.loading = old
@@ -274,10 +278,10 @@ class Window(QMainWindow):
         self.set_filters(dict(self.filters(), any='', all='', exclude='', search=''))
 
     def clear_filter_conditions(self):
-        self.set_filters(dict(self.filters(), minimum='', maximum='', inclusive=False, stock=False, category='', stock_min='', stock_max=''))
+        self.set_filters(dict(self.filters(), filter_any='', filter_all='', filter_exclude='', minimum='', maximum='', inclusive=False, stock=False, category='', stock_min='', stock_max=''))
 
     def clear_filters(self):
-        self.set_filters(dict(DEFAULT_FILTERS, any='', all='', exclude='', maximum='', minimum='', stock=False, category='', search=''))
+        self.set_filters(dict(DEFAULT_FILTERS, any='', all='', exclude='', filter_any='', filter_all='', filter_exclude='', maximum='', minimum='', stock=False, category='', search=''))
 
     def persist(self, presets=None):
         data = copy.deepcopy(self.store.data)
@@ -294,7 +298,9 @@ class Window(QMainWindow):
     def render_results(self):
         ordered = sorted(self.outcomes,key=lambda o: next((i for i,s in enumerate(self.shops) if s.url==o.shop.url),0))
         products = [p for o in ordered for p in o.products]
-        matches = filter_products(products,self.filters())
+        current_filters = self.filters()
+        current_filters.update(self.active_search)
+        matches = filter_products(products,current_filters)
         key = lambda p: (p.shop_url, p.id)
         selected_keys = {key(p) for p in self.selected()}
         current = self.table.currentIndex()
@@ -329,7 +335,7 @@ class Window(QMainWindow):
     def start(self, checked=False, retry=False):
         if self.worker is not None: return
         try:
-            shops = parse_shops(self.urls.toPlainText()); self.filters(); self.persist()
+            shops = parse_shops(self.urls.toPlainText()); self.filters(); self.active_search = {k: self.fields[k].text().strip() for k in self.search_fields}; self.persist()
         except (ValueError,OSError) as exc:
             self.notice.setText(str(exc)); return
         if retry:

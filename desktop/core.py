@@ -116,7 +116,7 @@ DEFAULT_URLS = [
     'https://www.16688.com.cn/shop/S522379',
     'https://www.16688.com.cn/shop/S889034',
 ]
-DEFAULT_FILTERS = {'any': '5x,10x', 'all': 'team', 'exclude': '1x, 网页, 不是5x, 不是10x', 'minimum': '', 'maximum': '35', 'inclusive': False, 'stock': True, 'category': '', 'search': '', 'sort': 'asc', 'stock_min': '', 'stock_max': ''}
+DEFAULT_FILTERS = {'any': '5x,10x', 'all': 'team', 'exclude': '1x, 网页, 不是5x, 不是10x', 'minimum': '', 'maximum': '35', 'inclusive': False, 'stock': True, 'category': '', 'search': '', 'sort': 'asc', 'stock_min': '', 'stock_max': '', 'filter_any': '5x,10x', 'filter_all': 'team', 'filter_exclude': '1x, 网页, 不是5x, 不是10x'}
 DEFAULT_PRESET_NAME = 'GPT_TEAM_5X'
 ALLOWED_HOSTS = {'wzyp.cn', 'www.wzyp.cn', 'ldxp.cn', 'www.ldxp.cn', '16688.com.cn', 'www.16688.com.cn'}
 
@@ -390,6 +390,9 @@ def fetch_shop(shop, cancel, progress=lambda *_: None, session_factory=NetworkSe
 
 def validate_filters(values):
     f = dict(DEFAULT_FILTERS, **{k: v for k, v in values.items() if k in DEFAULT_FILTERS})
+    # 旧配置的关键词同时作为本地筛选词迁移，之后两组可独立调整。
+    for old, new in (('any', 'filter_any'), ('all', 'filter_all'), ('exclude', 'filter_exclude')):
+        if new not in values: f[new] = f[old]
     for key, default in DEFAULT_FILTERS.items():
         if not isinstance(f[key], type(default)):
             raise ValueError('筛选条件格式错误：' + key)
@@ -411,13 +414,18 @@ def validate_filters(values):
 def filter_products(products, values):
     f = validate_filters(values)
     words = lambda s: [norm(x.strip()) for x in re.split(r'[,，;；|\n]+', s) if x.strip()]
-    any_words, all_words, exclude = words(f['any']), words(f['all']), words(f['exclude'])
+    search_any, search_all, search_exclude = words(f['any']), words(f['all']), words(f['exclude'])
+    filter_any, filter_all, filter_exclude = words(f['filter_any']), words(f['filter_all']), words(f['filter_exclude'])
     found = []
     for item in products:
         name = norm(item.name)
-        if any_words and not any(k in name for k in any_words):
+        if search_any and not any(k in name for k in search_any):
             continue
-        if not all(k in name for k in all_words) or any(k in name for k in exclude):
+        if not all(k in name for k in search_all) or any(k in name for k in search_exclude):
+            continue
+        if filter_any and not any(k in name for k in filter_any):
+            continue
+        if not all(k in name for k in filter_all) or any(k in name for k in filter_exclude):
             continue
         if f['stock'] and item.stock is not True:
             continue

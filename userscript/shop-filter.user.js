@@ -24,7 +24,7 @@
   const text = e => e?.textContent?.trim() || '';
   const normalize = s => String(s).normalize('NFKC').toLowerCase();
   const tokens = s => normalize(s).split(/[\n,，;；|]+/).map(x => x.trim()).filter(Boolean);
-  const defaults = { any: '5x,10x', all: 'team', not: '1x, 网页, 不是5x, 不是10x', min: '', max: '35', inclusive: false, stock: true, sort: 'asc', query: '', compact: false, stockMin: '', stockMax: '' };
+  const defaults = { any: '5x,10x', all: 'team', not: '1x, 网页, 不是5x, 不是10x', min: '', max: '35', inclusive: false, stock: true, sort: 'asc', query: '', compact: false, stockMin: '', stockMax: '', filterAny: '5x,10x', filterAll: 'team', filterNot: '1x, 网页, 不是5x, 不是10x' };
   const storageKey = () => 'shop-filter:' + location.pathname;
   const is16688 = /(^|\.)16688\.com\.cn$/.test(location.hostname);
   const categorySelector = is16688 ? '.category-side .category-item' : '.fl_box_leng, .arco-menu-item:has(.category-name-text)';
@@ -53,8 +53,11 @@
   function matches(item, f) {
     const name = normalize(item.name);
     const any = tokens(f.any), all = tokens(f.all), not = tokens(f.not);
+    const filterAny = tokens(f.filterAny), filterAll = tokens(f.filterAll), filterNot = tokens(f.filterNot);
     return !!name && (!any.length || any.some(k => name.includes(k)))
       && all.every(k => name.includes(k)) && !not.some(k => name.includes(k))
+      && (!filterAny.length || filterAny.some(k => name.includes(k)))
+      && filterAll.every(k => name.includes(k)) && !filterNot.some(k => name.includes(k))
       && (!f.stock || item.stock === true)
       && (!f.stockMin || item.count !== null && item.count >= Number(f.stockMin))
       && (!f.stockMax || item.count !== null && item.count <= Number(f.stockMax))
@@ -98,17 +101,21 @@
     <div class="preset-edit"><input name="presetName" aria-label="预设名称" maxlength="80" placeholder="预设名称，例如：低价有货 Team"><button type="button" data-preset="save">另存为预设</button></div>
     <div class="preset-buttons"><button type="button" data-preset="apply">应用所选</button><button type="button" data-preset="update">更新条件</button><button type="button" data-preset="rename">重命名</button><button class="danger" type="button" data-preset="delete">删除</button><button type="button" data-preset="undo" hidden>撤销删除</button></div>
     <div class="preset-status" role="status" aria-live="polite">独立预设 · 同一油猴脚本跨商家、跨平台共享。</div>
-  </details><details class="search-settings" open><summary>搜索条件</summary>
+  </details><details class="search-settings" open><summary>搜索条件（固定查询）</summary>
     <div class="fields">
       <label class="wide">包含任意一个词<input name="any" placeholder="5x,10x"></label>
       <label>同时包含所有词<input name="all" placeholder="team"></label>
       <label>排除任意一个词<input name="not" placeholder="1x"></label>
-    </div><p class="hint">多个词用逗号分隔，忽略大小写。</p><button type="button" data-action="clear-search">清空搜索词</button>
+    </div><p class="hint">查询时固定使用；修改后点击“加载并筛选”才更新商品集合。多个词用逗号分隔。</p><button type="button" data-action="clear-search">清空搜索词</button>
   </details><div class="actions">
     <button class="primary" type="submit">加载并筛选</button><button type="button" data-action="stop" hidden>停止</button><button type="button" data-action="preset">恢复默认</button><button type="button" data-action="clear">清除筛选</button>
   </div>
-</div><div class="filter-column"><details class="filter-settings" open><summary>筛选条件</summary>
+</div><div class="filter-column"><details class="filter-settings" open><summary>筛选条件（本地即时）</summary>
     <div class="fields">
+      <label class="wide">包含任意一个词<input name="filterAny" placeholder="例如：5x,10x"></label>
+      <label>同时包含所有词<input name="filterAll" placeholder="例如：team"></label>
+      <label>排除任意一个词<input name="filterNot" placeholder="例如：1x"></label>
+      <p class="hint wide">只筛选已经获取的商品，修改后立即生效，不会重新请求接口。</p>
       <label class="wide">分类<select name="scope"><option value="current">当前分类</option><option value="all">全部分类</option></select></label>
       <label>最低价格（元，含）<input name="min" type="number" min="0" step="any" placeholder="不限"></label>
       <label>最高价格（元）<input name="max" type="number" min="0" step="any" placeholder="不限"></label>
@@ -440,9 +447,9 @@
   $('[data-action=stop]', root).addEventListener('click', stop);
   $('[data-action=preset]', root).addEventListener('click', () => { setFields(defaults); saveFilters(); markPresetEdited(); notice('已恢复默认条件和价格升序。'); render(); });
   $('[data-action=clear-search]', root).addEventListener('click', () => { setFields({...filters(),any:'',all:'',not:'',query:''}); saveFilters(); markPresetEdited(); render(); });
-  $('[data-action=clear-filter]', root).addEventListener('click', () => { setFields({...filters(),min:'',max:'',stockMin:'',stockMax:'',stock:false,inclusive:false}); saveFilters(); markPresetEdited(); render(); });
-  $('[data-action=clear]', root).addEventListener('click', () => { controller?.abort(); controller = null; generation++; setBusy(false); setFields({ ...defaults,any:'',all:'',not:'',min:'',max:'',stock:false }); saveFilters(); markPresetEdited(); render(); notice('已清除限制，保留已获取商品；默认按价格升序。'); });
-  form.addEventListener('input', event => { if (['scope','presetName','presetChoice'].includes(event.target.name)) return; saveFilters(); markPresetEdited(); if (!busy) { notice(''); render(); } });
+  $('[data-action=clear-filter]', root).addEventListener('click', () => { setFields({...filters(),filterAny:'',filterAll:'',filterNot:'',min:'',max:'',stockMin:'',stockMax:'',stock:false,inclusive:false}); saveFilters(); markPresetEdited(); render(); });
+  $('[data-action=clear]', root).addEventListener('click', () => { controller?.abort(); controller = null; generation++; setBusy(false); setFields({ ...defaults,any:'',all:'',not:'',filterAny:'',filterAll:'',filterNot:'',min:'',max:'',stock:false }); saveFilters(); markPresetEdited(); render(); notice('已清除限制，保留已获取商品；默认按价格升序。'); });
+  form.addEventListener('input', event => { if (['scope','presetName','presetChoice'].includes(event.target.name)) return; saveFilters(); markPresetEdited(); const fixedSearch = ['any','all','not'].includes(event.target.name); if (!busy && !fixedSearch) { notice(''); render(); } else if (fixedSearch) notice('搜索条件已修改；点击“加载并筛选”更新商品集合。'); });
   field('scope').addEventListener('change', () => { cache = []; complete = false; fetchedAt = null; loadedCategoryId = null; results.replaceChildren(); $('.timestamp', root).textContent = ''; notice(''); markPresetEdited(); message('分类已改变，请点击“加载并筛选”。'); });
   root.addEventListener('keydown', event => {
     if (event.key !== 'Enter') return;
