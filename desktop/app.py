@@ -101,7 +101,6 @@ QLineEdit,QPlainTextEdit,QComboBox {background:#f8faff; border:1px solid #d6dfec
 QComboBox QAbstractItemView, QMenu {background:white; color:#25334a; border:1px solid #b5c3d8; selection-background-color:#dce9ff; selection-color:#173b71;}
 QComboBox {padding-right:28px;}
 QComboBox::drop-down {width:26px; border:0; border-left:1px solid #d6dfec; background:#f1f5fc; border-top-right-radius:6px; border-bottom-right-radius:6px;}
-QComboBox::down-arrow {image:none; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #52627a;}
 QComboBox::drop-down:hover {background:#e4edfc;}
 QTabWidget::pane {border:1px solid #d6dfec; border-radius:8px; background:white; top:-1px;}
 QTabBar::tab {background:#edf2fa; color:#52627a; padding:9px 16px; border:1px solid transparent; border-top-left-radius:7px; border-top-right-radius:7px;}
