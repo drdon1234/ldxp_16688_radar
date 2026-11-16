@@ -15,7 +15,7 @@ from PySide6.QtGui import QColor, QDesktopServices, QKeySequence, QShortcut, QPa
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QLineEdit, QPlainTextEdit, QComboBox, QCheckBox, QFormLayout,
     QTableView, QHeaderView, QSplitter, QScrollArea, QAbstractItemView, QMessageBox,
-    QInputDialog, QFileDialog)
+    QInputDialog, QFileDialog, QFrame, QTabWidget)
 from core import DEFAULT_FILTERS, DEFAULT_URLS, Store, parse_shops, fetch_shop, filter_products, validate_filters, export_csv, norm, reset_platform_limits, configure_cooldowns, NetworkSession
 
 
@@ -40,6 +40,15 @@ class Worker(QThread):
             futures = [pool.submit(run_platform, shops) for shops in groups]
             for future in as_completed(futures):
                 future.result()
+
+
+class NoWheelComboBox(QComboBox):
+    """下拉框未展开时不响应滚轮，避免鼠标经过时误改选项。"""
+    def wheelEvent(self, event):
+        if self.view().isVisible():
+            super().wheelEvent(event)
+        else:
+            event.ignore()
 
 
 class ProductsModel(QAbstractTableModel):
@@ -90,6 +99,13 @@ QLabel#section {font-size:15px; font-weight:700; margin-top:8px;}
 QLabel#muted {color:#586880; font-size:12px;}
 QLineEdit,QPlainTextEdit,QComboBox {background:#f8faff; border:1px solid #d6dfec; border-radius:6px; padding:6px; selection-background-color:#245dcc; selection-color:white; placeholder-text-color:#586880;}
 QComboBox QAbstractItemView, QMenu {background:white; color:#25334a; border:1px solid #b5c3d8; selection-background-color:#dce9ff; selection-color:#173b71;}
+QComboBox {padding-right:28px;}
+QComboBox::drop-down {width:26px; border:0; border-left:1px solid #d6dfec; background:#f1f5fc; border-top-right-radius:6px; border-bottom-right-radius:6px;}
+QComboBox::down-arrow {image:none; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #52627a;}
+QComboBox::drop-down:hover {background:#e4edfc;}
+QTabWidget::pane {border:1px solid #d6dfec; border-radius:8px; background:white; top:-1px;}
+QTabBar::tab {background:#edf2fa; color:#52627a; padding:9px 16px; border:1px solid transparent; border-top-left-radius:7px; border-top-right-radius:7px;}
+QTabBar::tab:selected {background:white; color:#173b71; border-color:#d6dfec; border-bottom-color:white; font-weight:600;}
 QToolTip {background:#f8faff; color:#25334a; border:1px solid #b5c3d8; padding:6px;}
 QLineEdit:focus,QPlainTextEdit:focus,QComboBox:focus {border:1px solid #2864d7;}
 QPushButton {background:#f1f5fc; border:1px solid #d9e2f0; border-radius:6px; padding:7px 11px;}
@@ -186,7 +202,7 @@ class Window(QMainWindow):
         clear_search = QPushButton('清空搜索词'); clear_search.clicked.connect(self.clear_search_conditions); search_layout.addWidget(clear_search)
         left.insertWidget(3, search_box)
         filter_box = QWidget(); filter_box.setObjectName('filterConditions')
-        filter_layout = QVBoxLayout(filter_box)
+        filter_layout = QVBoxLayout(filter_box); filter_layout.setAlignment(Qt.AlignTop)
         self.section(filter_layout, '筛选条件（本地即时）')
         form = QFormLayout(); form.setSpacing(9)
         for key, label, hint in [('filter_any','包含任一','例如：5x,10x'),('filter_all','同时包含','例如：team'),('filter_exclude','排除关键词','例如：1x')]:
@@ -203,25 +219,26 @@ class Window(QMainWindow):
             edit = QLineEdit(); edit.setPlaceholderText(placeholder); self.fields[key]=edit; self.filter_fields[key] = edit; quantity.addWidget(edit)
         form.addRow('库存数量',quantity)
         hint = QLabel('数量范围包含上下限；设置后排除未公开数量的商品。'); hint.setWordWrap(True); hint.setObjectName('muted'); form.addRow(hint)
-        self.category = QComboBox(); self.category.setEditable(True); self.category.addItem(''); self.category.lineEdit().setPlaceholderText('全部分类 / 输入分类名称')
+        self.category = NoWheelComboBox(); self.category.setEditable(True); self.category.addItem(''); self.category.lineEdit().setPlaceholderText('全部分类 / 输入分类名称')
         self.category.setToolTip('空白表示全部分类。指定分类按名称精确匹配所有商家；未包含该分类的商家不会命中。')
         form.addRow('分类', self.category)
-        self.sort = QComboBox(); self.sort.addItem('价格从低到高','asc'); self.sort.addItem('价格从高到低','desc'); self.sort.addItem('商家原始顺序','original')
+        self.sort = NoWheelComboBox(); self.sort.addItem('价格从低到高','asc'); self.sort.addItem('价格从高到低','desc'); self.sort.addItem('商家原始顺序','original')
         form.addRow('排序', self.sort)
         filter_layout.addLayout(form)
         clear_filter = QPushButton('清空筛选限制'); clear_filter.clicked.connect(self.clear_filter_conditions); filter_layout.addWidget(clear_filter)
         resetrow = QHBoxLayout(); self.button(resetrow,'清空条件', self.clear_filters); self.button(resetrow,'恢复自带条件',lambda: self.set_filters(DEFAULT_FILTERS)); left.addLayout(resetrow)
         self.section(left, '命名预设')
-        self.presets = QComboBox(); left.addWidget(self.presets)
+        self.presets = NoWheelComboBox(); left.addWidget(self.presets)
         row = QHBoxLayout(); self.button(row,'另存为',self.save_preset); self.button(row,'更新',self.update_preset); self.button(row,'重命名',self.rename_preset); self.button(row,'删除',self.delete_preset); left.addLayout(row)
         hint = QLabel('选中即恢复商家链接、搜索词及全部筛选条件。修改后点击“更新”保存到预设。'); hint.setObjectName('muted'); hint.setWordWrap(True); left.addWidget(hint)
         left.addStretch()
         scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setWidget(sidebar); scroll.setMinimumWidth(335)
         split.addWidget(scroll)
         results = QWidget(); results.setObjectName('results'); right = QVBoxLayout(results); right.setContentsMargins(16,16,16,12)
-        right.addWidget(filter_box)
-        self.summary = QLabel('填写商家链接，开始第一次查询'); self.summary.setObjectName('section'); right.addWidget(self.summary)
-        self.search = QLineEdit(); self.search.setPlaceholderText('在结果中搜索商品名称或商家…'); right.addWidget(self.search)
+        filter_scroll = QScrollArea(); filter_scroll.setWidgetResizable(True); filter_scroll.setFrameShape(QFrame.NoFrame); filter_scroll.setWidget(filter_box)
+        filter_page = QWidget(); filter_layout_page = QVBoxLayout(filter_page); filter_layout_page.setContentsMargins(10,10,10,10); filter_layout_page.addWidget(filter_scroll)
+        self.summary = QLabel('填写商家链接，开始第一次查询'); self.summary.setObjectName('section')
+        self.search = QLineEdit(); self.search.setPlaceholderText('在结果中搜索商品名称或商家…')
         self.model = ProductsModel(); self.table = QTableView(); self.table.setModel(self.model)
         self.table.setAlternatingRowColors(True); self.table.setSelectionBehavior(QAbstractItemView.SelectRows); self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers); self.table.setWordWrap(False)
@@ -230,10 +247,11 @@ class Window(QMainWindow):
         header = self.table.horizontalHeader(); header.setSectionResizeMode(0,QHeaderView.Stretch)
         for i in range(1, self.model.columnCount()): header.setSectionResizeMode(i,QHeaderView.Fixed)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        right.addWidget(self.table,1)
-        self.detail = QLabel('选中商品查看完整名称，双击打开商品页。'); self.detail.setWordWrap(True); self.detail.setMinimumHeight(45); self.detail.setTextFormat(Qt.PlainText); right.addWidget(self.detail)
-        row = QHBoxLayout(); self.button(row,'打开商品',self.open_product); self.button(row,'复制选中链接',self.copy_selected); self.button(row,'复制全部结果',self.copy_all); self.button(row,'导出 CSV',self.export); right.addLayout(row)
-        self.log = QPlainTextEdit(); self.log.setReadOnly(True); self.log.setMaximumHeight(105); self.log.setPlaceholderText('每个商家的查询状态会显示在这里；不自动访问网页。'); right.addWidget(self.log)
+        result_page = QWidget(); result_layout_page = QVBoxLayout(result_page); result_layout_page.setContentsMargins(10,10,10,10); result_layout_page.addWidget(self.summary); result_layout_page.addWidget(self.search); result_layout_page.addWidget(self.table,1)
+        self.detail = QLabel('选中商品查看完整名称，双击打开商品页。'); self.detail.setWordWrap(True); self.detail.setMinimumHeight(34); self.detail.setTextFormat(Qt.PlainText); result_layout_page.addWidget(self.detail)
+        row = QHBoxLayout(); self.button(row,'打开商品',self.open_product); self.button(row,'复制选中链接',self.copy_selected); self.button(row,'复制全部结果',self.copy_all); self.button(row,'导出 CSV',self.export); result_layout_page.addLayout(row)
+        status_page = QWidget(); status_layout_page = QVBoxLayout(status_page); status_layout_page.setContentsMargins(10,10,10,10); self.log = QPlainTextEdit(); self.log.setReadOnly(True); self.log.setPlaceholderText('每个商家的查询状态会显示在这里；不自动访问网页。'); status_layout_page.addWidget(self.log)
+        tabs = QTabWidget(); tabs.addTab(filter_page,'筛选条件'); tabs.addTab(result_page,'结果列表'); tabs.addTab(status_page,'查询状态'); right.addWidget(tabs,1)
         split.addWidget(results); split.setSizes([355,940])
         self.notice = QLabel('就绪 · 数据仅在点击查询时刷新'); self.notice.setWordWrap(True); layout.addWidget(self.notice)
         self.setCentralWidget(root)
